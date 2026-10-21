@@ -19,7 +19,7 @@ except ImportError as e:
 def plot_loc_field(loc_field_vec, ny, nx, idx, samp_dir, tag, colorbar=True, axis=False):
     loc_field_2d = loc_field_vec.reshape(2*ny + 1, 2*nx + 1, order='F')
     plt.figure()
-    plt.imshow(loc_field_2d, origin='lower', cmap='jet')
+    plt.imshow(loc_field_2d, origin='lower', cmap='magma')
     if colorbar:
         plt.colorbar()
     if not axis:

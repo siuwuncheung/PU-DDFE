@@ -48,7 +48,6 @@ def get_args():
     parser.add_argument("--Ny", type=int, help="Defaults to Nx")
     parser.add_argument("--num_loc_basis", type=int, default=5)
     parser.add_argument("--multiply_POU", type=int, default=1, help="0: no POU multiplication, 1: bilinear POU, 2: harmonic_extension POU")
-    parser.add_argument("--corr_patch_size", type=int, default=0, help="Source correction patch size")
     parser.add_argument("--solve_ROM", type=int, default=1, help="0: load, 1: solve")
     parser.add_argument("--plot_solution_rom", type=int, default=1)
 

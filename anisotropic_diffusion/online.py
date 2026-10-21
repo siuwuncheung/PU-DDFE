@@ -7,6 +7,7 @@ import scipy.io as sio
 import pyamg
 from scipy.sparse.linalg import spsolve, cg
 from scipy.sparse import coo_matrix, hstack
+from datetime import datetime
 
 try:
     from medium import compute_anisotropic_tensor, compute_local_anisotropic_tensor
@@ -19,7 +20,6 @@ try:
         save_SPLU,
         save_LDL,
         FOM_solution,
-        patch_solution,
         ROM_solution,
     )
     from util import (
@@ -30,7 +30,6 @@ try:
         plot_surface,
         plot_tensor_components,
         plot_global_basis_grid,
-        plot_patch_solution,
     )
 except ImportError as e:
     print(f"FATAL ERROR: Could not import a necessary module: {e}")
@@ -70,7 +69,6 @@ range_mag_grad_x = params.range_mag_grad_x
 range_mag_grad_y = params.range_mag_grad_y
 
 multiply_POU = params.multiply_POU
-corr_patch_size = params.corr_patch_size
 
 # Coordinates for the FOM grid (cell centers)
 X1 = np.linspace(1/n_FOM_x/2, 1 - 1/n_FOM_x/2, n_FOM_x)
@@ -100,7 +98,8 @@ basis_dir = (
     f"{prob_config}/{samp_config}/POU{multiply_POU}_basis{num_loc_basis}"
 )
 
-run_dir = f"{basis_dir}/os{corr_patch_size}" 
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+run_dir = f"{basis_dir}/{timestamp}" 
 os.makedirs(run_dir, exist_ok=True)
 
 try:
@@ -244,30 +243,6 @@ for subdomain_idx in subdomains:
             f"{run_dir}/Global_basis_{subdomain_idx}_{basis_idx}.png",
         )
 
-# Source-induced local correction
-time_src = 0
-if not (medium_type == "single_null" or medium_type == "double_null"):
-    corr_patch_size = 0
-
-if corr_patch_size > 0:
-    i_center = round(0.5 * Nx)
-    j_center = round(0.5 * Ny)
-    patch_dofs, u_corr_patch, time_patch = patch_solution(i_center, j_center, corr_patch_size, ny, Ny, nx, Nx, is_DOF, FOM_DA, FOM_RHS, run_dir)
-    time_src = time_src + time_patch
-    if verbosity >= 1:
-        print(f"CPU time for source-induced ROM solution: {time_src} seconds")
-
-    N_DOF = DOF_idx_FOM.shape[0]
-    u_corr = np.zeros(N_DOF)
-    u_corr[patch_dofs] = u_corr_patch
-
-    plot_u_corr = reconstruct_field(u_corr, bfc, medium_type, dof_map, ny, Ny, nx, Nx)
-    plot_patch_solution(
-        plot_u_corr, f"{run_dir}/u_corr.png", i_center, j_center, corr_patch_size, Nx, Ny,
-        title="Source-induced local correction $u_{corr}$",
-    )
-    FOM_RHS = FOM_RHS - FOM_DA @ u_corr
-
 ROM_RHS = glob_basis_DOF.T @ FOM_RHS
 
 if solve_ROM == 0:
@@ -280,8 +255,6 @@ if solve_ROM == 0:
 else:
     ROM_U, time_factor, time_ROM = ROM_solution(ROM_DA, ROM_RHS, basis_dir, solve_ROM)
     ROM_U_FOM = glob_basis_DOF @ ROM_U
-    if corr_patch_size > 0:
-        ROM_U_FOM = ROM_U_FOM + u_corr
     np.savez(f'{run_dir}/ROM_solution.npz', ROM_U=ROM_U, ROM_U_FOM=ROM_U_FOM, time_factor=time_factor, time_ROM=time_ROM)
 
 ROM_residual = np.linalg.norm(ROM_RHS - ROM_DA @ ROM_U)
@@ -320,7 +293,6 @@ if solve_FOM >= 0:
             title="Pointwise Error $u_h-u_H$",
         )
 
-    # --- Error ---
     error_diff = ROM_U_FOM - FOM_U
     
     error_sq_L2 = error_diff.T @ FOM_M @ error_diff
