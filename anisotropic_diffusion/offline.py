@@ -10,22 +10,11 @@ try:
     from medium import compute_anisotropic_tensor, compute_local_anisotropic_tensor
     from snapshot_2d import snapshot_2d_dbc
     from tensor_eigenproblem_2d import tensor_eigenproblem_2d
-    from util import get_args
+    from util import get_args, plot_scalar_field
 except ImportError as e:
     print(f"FATAL ERROR: Could not import a necessary module: {e}")
     print("Please ensure all translated Python files (.py) are in the same directory.")
     sys.exit(1)
-
-def plot_loc_field(loc_field_vec, ny, nx, idx, samp_dir, tag, colorbar=True, axis=False):
-    loc_field_2d = loc_field_vec.reshape(2*ny + 1, 2*nx + 1, order='F')
-    plt.figure()
-    plt.imshow(loc_field_2d, origin='lower', cmap='magma')
-    if colorbar:
-        plt.colorbar()
-    if not axis:
-        plt.axis('off')
-    plt.savefig(f'{samp_dir}/{tag}_{idx}_{nx}.png', bbox_inches='tight', pad_inches=0, transparent=True)
-    plt.close()
 
 params = get_args()
 
@@ -98,7 +87,8 @@ np.savez(f'{samp_dir}/loc_snapshots.npz', loc_snapshots=loc_snapshots)
 print(f'Saved snapshots to {samp_dir}')
 
 for k in range(loc_snapshots.shape[1]):
-    plot_loc_field(loc_snapshots[:,k], ny, nx, k, samp_dir, 'snap')
+    plot_loc_snapshot = loc_snapshots[:,k].reshape(2*ny+1, 2*nx+1, order='F')
+    plot_scalar_field(plot_loc_snapshot, f"{samp_dir}/snap_{k}_{nx}.png")
 
 print('Forming Local Basis')
 bx_loc_sp, by_loc_sp, a_loc_sp = compute_local_anisotropic_tensor(
@@ -117,6 +107,7 @@ loc_basis = tensor_eigenproblem_2d(a_loc_sp, nx, ny, loc_snapshots, multiply_POU
 np.save(f'{samp_dir}/loc_basis.npy', loc_basis)
 
 for k in range(loc_basis.shape[1]):
-    plot_loc_field(loc_basis[:,k], ny, nx, k, samp_dir, 'basis')
+    plot_loc_basis = loc_basis[:,k].reshape(2*ny+1, 2*nx+1, order='F')
+    plot_scalar_field(plot_loc_basis, f"{samp_dir}/basis_{k}_{nx}.png")
 
 print(f'Saved spectral basis to {samp_dir}')
