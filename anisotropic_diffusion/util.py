@@ -19,6 +19,12 @@ def get_args():
     parser.add_argument("--num_loc_snap", type=int, default=2)
     parser.add_argument("--train_anisotropy_order", type=int, default=6)
 
+    parser.add_argument("--mean_base_theta_pi", type=float, default=0.0, help="Multiple of pi")
+    parser.add_argument("--mean_curv_x_pi", type=float, default=0.0, help="Multiple of pi")
+    parser.add_argument("--mean_curv_y_pi", type=float, default=0.0, help="Multiple of pi")
+    parser.add_argument("--mean_mag_grad_x", type=float, default=0.0)
+    parser.add_argument("--mean_mag_grad_y", type=float, default=0.0)
+
     parser.add_argument("--range_base_theta_pi", type=float, default=0.0, help="Multiple of pi")
     parser.add_argument("--range_curv_x_pi", type=float, default=0.0, help="Multiple of pi")
     parser.add_argument("--range_curv_y_pi", type=float, default=0.0, help="Multiple of pi")
