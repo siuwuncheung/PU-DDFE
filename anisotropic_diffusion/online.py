@@ -7,7 +7,6 @@ import scipy.io as sio
 import pyamg
 from scipy.sparse.linalg import spsolve, cg
 from scipy.sparse import coo_matrix, hstack
-from datetime import datetime
 
 try:
     from medium import compute_anisotropic_tensor, compute_local_anisotropic_tensor
@@ -29,7 +28,7 @@ try:
         plot_scalar_field_with_contour,
         plot_surface,
         plot_tensor_components,
-        plot_global_basis_grid,
+        plot_global_basis_with_coarse_grid,
     )
 except ImportError as e:
     print(f"FATAL ERROR: Could not import a necessary module: {e}")
@@ -98,8 +97,7 @@ basis_dir = (
     f"{prob_config}/{samp_config}/POU{multiply_POU}_basis{num_loc_basis}"
 )
 
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-run_dir = f"{basis_dir}/{timestamp}" 
+run_dir = f"{basis_dir}/static" 
 os.makedirs(run_dir, exist_ok=True)
 
 try:
@@ -233,13 +231,13 @@ if verbosity >= 2:
     print(f'Global basis DOF shape = {glob_basis_DOF.shape}')
 
 if medium_type == "magnetic_island":
-    subdomains = [0, Ny-1, (Nx-2)*(Ny), (Nx-1)*(Ny)-1]
+    subdomains = [0, Ny-1, (Nx-1)*(Ny)//2, (Nx-2)*(Ny), (Nx-1)*(Ny)-1]
 else:
-    subdomains = [0, Ny-2, (Nx-2)*(Ny-1), (Nx-1)*(Ny-1)-1]
+    subdomains = [0, Ny-2, ((Nx-2)*(Ny-1)+(Ny-2))//2, (Nx-2)*(Ny-1), (Nx-1)*(Ny-1)-1]
 for subdomain_idx in subdomains:
-    for basis_idx in range(min(num_loc_basis, 16)):
-        plot_global_basis_grid(
-            glob_basis, basis_idx, subdomain_idx, num_loc_basis, n_FOM_y+1, n_FOM_x+1, 
+    for basis_idx in range(min(num_loc_basis, 21)):
+        plot_global_basis_with_coarse_grid(
+            glob_basis, basis_idx, subdomain_idx, num_loc_basis, n_FOM_y+1, n_FOM_x+1, Ny, Nx, medium_type,  
             f"{run_dir}/Global_basis_{subdomain_idx}_{basis_idx}.png",
         )
 
@@ -299,7 +297,7 @@ if solve_FOM >= 0:
     FOM_sq_L2 = FOM_U.T @ FOM_M @ FOM_U
     L2_error = np.sqrt(error_sq_L2 / FOM_sq_L2)
 
-    print(f"Speed-up: {time_FOM / (time_src + time_ROM)}")
+    print(f"Speed-up: {time_FOM / time_ROM}")
     print(f'The relative L2 Error     is {L2_error:.2e}.')
 
 print(f'Saved results to {run_dir}')

@@ -208,6 +208,106 @@ def plot_scalar_field_with_contour(
     )
     plt.close()
 
+def plot_scalar_field_with_coarse_grid(
+    field,
+    n_rows_coarse,
+    n_cols_coarse,
+    medium_type,
+    filename,
+    title=None,
+    extent=(0, 1, 0, 1),
+    cmap="magma",
+    figsize=None,
+    transparent=True,
+):
+    """Plot a 2D scalar field with an overlaid coarse grid."""
+    plt.figure(figsize=figsize)
+
+    plt.imshow(
+        field,
+        origin="lower",
+        extent=extent,
+        cmap=cmap,
+    )
+
+    cbar = plt.colorbar()
+    cbar.ax.tick_params(labelsize=16)
+
+    if title is not None:
+        plt.title(title, fontsize=16)
+
+    plt.xlabel("$x$", fontsize=16)
+    plt.ylabel("$y$", fontsize=16)
+    plt.xticks([0, 0.25, 0.5, 0.75, 1], fontsize=16)
+    plt.yticks([0, 0.25, 0.5, 0.75, 1], fontsize=16)
+
+    xmin, xmax, ymin, ymax = extent
+    x_coords = np.linspace(xmin, xmax, n_cols_coarse + 1)
+    y_coords = np.linspace(ymin, ymax, n_rows_coarse + 1)
+
+    x_square, y_square = [], []
+    x_cross, y_cross = [], []
+    x_dot, y_dot = [], []
+
+    for j, y in enumerate(y_coords):
+        for i, x in enumerate(x_coords):
+            is_vertical = (i == 0) or (i == n_cols_coarse)
+            is_horizontal = (j == 0) or (j == n_rows_coarse)
+
+            if is_vertical:
+                x_cross.append(x)
+                y_cross.append(y)
+            elif is_horizontal:
+                if medium_type == "magnetic_island":
+                    x_dot.append(x)
+                    y_dot.append(y)
+                else:
+                    x_cross.append(x)
+                    y_cross.append(y)
+            else:
+                x_square.append(x)
+                y_square.append(y)
+
+    plt.scatter(
+        x_square, y_square,
+        marker="s",
+        color="cyan",
+        s=10,
+        zorder=3,
+        linewidths=1.5,
+        clip_on=False
+    )
+
+    if x_cross:
+        plt.scatter(
+            x_cross, y_cross,
+            marker="X",
+            color="lightgray",
+            s=10,
+            zorder=3,
+            linewidths=1.5,
+            clip_on=False
+        )
+
+    if x_dot:
+        plt.scatter(
+            x_dot, y_dot,
+            marker="P",
+            color="lime",
+            s=10,
+            zorder=3,
+            linewidths=1.5,
+            clip_on=False
+        )
+
+    plt.savefig(
+        filename,
+        bbox_inches="tight",
+        pad_inches=0,
+        transparent=transparent,
+    )
+    plt.close()
+
 def plot_surface(
     field,
     X,
@@ -325,48 +425,6 @@ def plot_global_basis(
     basis_idx,
     subdomain_idx,
     num_loc_basis,
-    filename,
-    extent=(0, 1, 0, 1),
-    cmap="magma",
-):
-    """
-    Plot one global basis function.
-
-    glob_basis is assumed to live on the full spatial grid:
-        ((ny*Ny+1)*(nx*Nx+1), N_basis)
-    """
-    column = basis_idx + subdomain_idx * num_loc_basis
-
-    basis = glob_basis[:, column].toarray().ravel()
-
-    N_dof_spatial = basis.size
-    N_rows = int(np.sqrt(N_dof_spatial))
-
-    if N_rows * N_rows != N_dof_spatial:
-        raise ValueError(
-            "Cannot infer spatial-grid dimensions from basis size. "
-            "Pass a basis with a known rectangular grid."
-        )
-
-    plot_basis = basis.reshape(
-        N_rows,
-        N_rows,
-        order="F",
-    )
-
-    plot_scalar_field(
-        plot_basis,
-        filename,
-        title=None,
-        extent=extent,
-        cmap=cmap,
-    )
-
-def plot_global_basis_grid(
-    glob_basis,
-    basis_idx,
-    subdomain_idx,
-    num_loc_basis,
     n_rows,
     n_cols,
     filename,
@@ -374,7 +432,7 @@ def plot_global_basis_grid(
     cmap="magma",
 ):
     """
-    Plot one global basis when the spatial-grid dimensions are known.
+    Plot one global basis.
     """
     column = basis_idx + subdomain_idx * num_loc_basis
 
@@ -393,6 +451,45 @@ def plot_global_basis_grid(
         extent=extent,
         cmap=cmap,
     )
+
+def plot_global_basis_with_coarse_grid(
+    glob_basis,
+    basis_idx,
+    subdomain_idx,
+    num_loc_basis,
+    n_rows,
+    n_cols,
+    n_rows_coarse,
+    n_cols_coarse,
+    medium_type,
+    filename,
+    extent=(0, 1, 0, 1),
+    cmap="magma",
+):
+    """
+    Plot one global basis with coarse grid.
+    """
+    column = basis_idx + subdomain_idx * num_loc_basis
+
+    basis = glob_basis[:, column].toarray().ravel()
+
+    plot_basis = basis.reshape(
+        n_rows,
+        n_cols,
+        order="F",
+    )
+
+    plot_scalar_field_with_coarse_grid(
+        plot_basis,
+        n_rows_coarse,
+        n_cols_coarse,
+        medium_type,
+        filename,
+        title=None,
+        extent=extent,
+        cmap=cmap,
+    )
+
 
 def plot_patch_solution(
     field,
