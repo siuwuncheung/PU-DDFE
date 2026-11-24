@@ -11,7 +11,7 @@ def source_function(x, y, problem):
     elif problem == "magnetic_island":
         return 0.0 * x
     else:
-        return 1.0 + 0.0 * x
+        return 0.0 * x
 
 def form_source_2d(F: np.ndarray, nx: int, ny: int, Nx: int, Ny: int) -> np.ndarray:
     """

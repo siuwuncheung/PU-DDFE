@@ -1,8 +1,110 @@
+import h5py
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
+from scipy.interpolate import RegularGridInterpolator
+
+def compute_anisotropic_tensor_from_h5(
+    Ny: int, 
+    Nx: int, 
+    anisotropy_ratio: float, 
+    path: str, 
+    layer: int = 0,
+    save_dir: str = "."
+) -> tuple:
+    """
+    Computes the 2D anisotropic conductivity tensor K from HDF5 simulation data,
+    handling grid resolution differences between the native 
+    HDF5 grid and the target (Ny, Nx) grid via linear interpolation.
+    
+    Returns:
+        np.ndarray: Shape (Ny, Nx, 2, 2) where K[i, j] is the 2x2 tensor.
+    """
+    
+    with h5py.File(path, "r") as f:
+        fields = f["fields"][:]        # (n_layer, Ny_h5, Nx_h5, n_field)
+        x_h5 = f["x"][:]               # Native x coordinates
+        y_h5 = f["y"][:]               # Native y coordinates
+        
+    bx_raw  = fields[layer, :, :, 4]
+    by_raw  = fields[layer, :, :, 5]
+    
+    x_coords = np.linspace(1/Nx/2, 1 - 1/Nx/2, Nx)
+    y_coords = np.linspace(1/Ny/2, 1 - 1/Ny/2, Ny)
+    X, Y = np.meshgrid(x_coords, y_coords)
+    
+    interp_bx  = RegularGridInterpolator((y_h5, x_h5), bx_raw,  method='linear', bounds_error=False, fill_value=None)
+    interp_by  = RegularGridInterpolator((y_h5, x_h5), by_raw,  method='linear', bounds_error=False, fill_value=None)
+    
+    pts = np.stack([Y.ravel(), X.ravel()], axis=-1)
+    bx  = interp_bx(pts).reshape(Ny, Nx)
+    by  = interp_by(pts).reshape(Ny, Nx)
+    
+    b_mag = np.sqrt(bx**2 + by**2 + 1e-14)
+    bx, by = bx / b_mag, by / b_mag
+    
+    kappa_par = 1.0
+    kappa_perp = kappa_par / anisotropy_ratio
+    diff = kappa_par - kappa_perp
+    
+    K = np.zeros((Ny, Nx, 2, 2))
+    K[:, :, 0, 0] = kappa_perp + diff * bx**2
+    K[:, :, 1, 1] = kappa_perp + diff * by**2
+    K[:, :, 0, 1] = diff * bx * by
+    K[:, :, 1, 0] = K[:, :, 0, 1] 
+    
+    def clip_vectors(vx, vy, percentile=95):
+        mag = np.sqrt(vx**2 + vy**2)
+        thresh = np.percentile(mag, percentile)
+        scale = np.ones_like(mag)
+        mask = mag > thresh
+        scale[mask] = thresh / mag[mask]
+        return vx * scale, vy * scale
+
+    plt.figure()
+    skip = max(1, Nx // 8 - 1)
+    bx_c, by_c = clip_vectors(bx, by)
+    plt.quiver(X[::skip, ::skip], Y[::skip, ::skip], bx_c[::skip, ::skip], by_c[::skip, ::skip], color='blue')
+    plt.title("Effective directional vector $\\hat{b}$", fontsize=16)
+
+    plt.gca().set_aspect('equal')
+    plt.xlabel('x', fontsize=16)
+    plt.ylabel('y', fontsize=16)
+    plt.xticks([0, 0.25, 0.5, 0.75, 1])
+    plt.yticks([0, 0.25, 0.5, 0.75, 1])
+    plt.tick_params(axis='x', labelsize=16)
+    plt.tick_params(axis='y', labelsize=16)
+
+    plt.tight_layout()
+    plt.savefig(f"{save_dir}/effective_vector_b.png")
+    plt.close()
+
+    tensor_components = [("K11", K[:, :, 0, 0]), ("K22", K[:, :, 1, 1]), ("K12", K[:, :, 0, 1])]
+    for name, data in tensor_components:
+        plt.figure()
+        vmin = data[data > 0].min() if (data > 0).any() else None
+        vmax = data.max()
+        norm_val = LogNorm(vmin=vmin, vmax=vmax) if vmin and vmax and vmin > 0 else None
+        im = plt.pcolormesh(X, Y, data, shading='auto', cmap='magma', norm=norm_val)
+        plt.title(f"Diffusion tensor component ${name}$", fontsize=16)
+        cbar = plt.colorbar(im)
+        cbar.ax.tick_params(labelsize=16)
+
+        plt.gca().set_aspect('equal')
+        plt.xlabel('x', fontsize=16)
+        plt.ylabel('y', fontsize=16)
+        plt.xticks([0, 0.25, 0.5, 0.75, 1])
+        plt.yticks([0, 0.25, 0.5, 0.75, 1])
+        plt.tick_params(axis='x', labelsize=16)
+        plt.tick_params(axis='y', labelsize=16)
+
+        plt.tight_layout()
+        plt.savefig(f"{save_dir}/diffusion_tensor_{name}.png")
+        plt.close()
+
+    return bx, by, K
 
 def compute_anisotropic_tensor(
     Ny: int, 
@@ -10,7 +112,7 @@ def compute_anisotropic_tensor(
     anisotropy_ratio: float, 
     problem: str,
     save_dir: str = "."
-) -> np.ndarray:
+) -> tuple:
     """
     Computes the 2D anisotropic conductivity tensor K for specific prototype 
     problems from the Vogl et al. (2023) paper.
@@ -186,7 +288,7 @@ def compute_local_anisotropic_tensor(
     mag_grad_y: float,
     field_type: str = "",
     save_dir: str = "."
-) -> np.ndarray:
+) -> tuple:
     """
     Computes a 2D anisotropic conductivity tensor K using a local log-linear 
     parameterization of magnetic field angle and magnitude.

@@ -37,8 +37,7 @@ def get_args():
     parser.add_argument("--multiply_POU_offline", action="store_true")
 
     # Online
-    parser.add_argument("--medium_type", type=str, default="magnetic_island", 
-                        choices=["constant_field", "linear_model", "single_null", "double_null", "magnetic_island"])
+    parser.add_argument("--medium_type", type=str, default="magnetic_island") 
     parser.add_argument("--test_anisotropy_order", type=int, default=6)
     parser.add_argument("--n_FOM_x", type=int, default=256)
     parser.add_argument("--n_FOM_y", type=int, help="Defaults to n_FOM_x")

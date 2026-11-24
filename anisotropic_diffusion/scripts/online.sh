@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -J online
+#SBATCH -J online_elliptic
 #SBATCH -p pbatch
 #SBATCH -N 1
 #SBATCH -n 1
@@ -23,4 +23,4 @@ module load python/3.13.2
 eval "$(conda shell.bash hook)"
 conda activate ${VENV_DIR}
 
-python3 online.py --root_dir fourier_mode_harmonic_extension --train_anisotropy_order ${order} --num_loc_bc_mode ${num_mode} --medium_type ${medium_type} --test_anisotropy_order ${order} --n_FOM_x ${n_FOM_x} --Nx ${Nx} --num_loc_basis ${num_loc_basis}
+python3 online_elliptic.py --root_dir fourier_mode_harmonic_extension --train_anisotropy_order ${order} --num_loc_bc_mode ${num_mode} --medium_type ${medium_type} --test_anisotropy_order ${order} --n_FOM_x ${n_FOM_x} --Nx ${Nx} --num_loc_basis ${num_loc_basis}

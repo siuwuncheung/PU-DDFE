@@ -9,7 +9,11 @@ from scipy.sparse.linalg import spsolve, cg
 from scipy.sparse import coo_matrix, hstack
 
 try:
-    from medium import compute_anisotropic_tensor, compute_local_anisotropic_tensor
+    from medium import (
+        compute_anisotropic_tensor_from_h5, 
+        compute_anisotropic_tensor, 
+        compute_local_anisotropic_tensor
+    )
     from form_system_2d import form_system_2d
     from form_source_2d import source_function, form_source_2d
     from apply_bc_2d import boundary_function, apply_bc_2d
@@ -100,30 +104,42 @@ basis_dir = (
 run_dir = f"{basis_dir}/static" 
 os.makedirs(run_dir, exist_ok=True)
 
-try:
-    Az, bx, by, a, contour_levels= compute_anisotropic_tensor(
+if medium_type.endswith(".h5"):
+    bx, by, a = compute_anisotropic_tensor_from_h5(
         Ny=Ny*ny, 
         Nx=Nx*nx, 
         anisotropy_ratio=10.0**test_anisotropy_order, 
-        problem=medium_type,
+        path=f"/usr/workspace/nlrom/{medium_type}", 
+        layer = 0,
         save_dir=prob_config
     ) 
-except:
-    bx, by, a = compute_local_anisotropic_tensor(
-                Ny=Ny*ny, 
-                Nx=Nx*nx, 
-                anisotropy_ratio=10.0**test_anisotropy_order, 
-                base_theta=0.5*np.pi, 
-                curv_x=0.25*np.pi, 
-                curv_y=0.25*np.pi,
-                log_base_mag=0.0, 
-                mag_grad_x=0.0, 
-                mag_grad_y=0.0,
-                field_type="Global",
-                save_dir=prob_config
-    )
     Az = None
     contour_levels = None
+else:
+    try:
+        Az, bx, by, a, contour_levels = compute_anisotropic_tensor(
+            Ny=Ny*ny, 
+            Nx=Nx*nx, 
+            anisotropy_ratio=10.0**test_anisotropy_order, 
+            problem=medium_type,
+            save_dir=prob_config
+        ) 
+    except:
+        bx, by, a = compute_local_anisotropic_tensor(
+                    Ny=Ny*ny, 
+                    Nx=Nx*nx, 
+                    anisotropy_ratio=10.0**test_anisotropy_order, 
+                    base_theta_pi=0.0, 
+                    curv_x_pi=0.0, 
+                    curv_y_pi=0.0,
+                    mag_grad_x=0.0, 
+                    mag_grad_y=0.0,
+                    field_type="Global",
+                    save_dir=prob_config
+        )
+        Az = None
+        contour_levels = None
+
 if verbosity >= 2:
     print(f'a.shape = {a.shape}')
 
